@@ -1,7 +1,7 @@
 // db/index.js
 import mongoose from "mongoose";
 import DB_NAME from "../constants.js";
-
+//async function hai connectDB takes some time to connect thats why
 const connectDB = async () => {
     try {
         const connectionInstance = await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`);
