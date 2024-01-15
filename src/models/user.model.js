@@ -58,7 +58,7 @@ const userSchema =new Schema({
 //next matlab aage pass krdo
 userSchema.pre("save",async function(next){
     if(!this.isModified("password"))return next();//check kab kab hash zaruri hai ex updating creating modifying
-    this.password=bcrypt.hash(this.password,10)
+    this.password=await bcrypt.hash(this.password,10) //awaut passeord hash hone ke pehle time lagega thats why await
     next()
 })
 
