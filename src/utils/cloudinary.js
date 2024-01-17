@@ -1,5 +1,5 @@
 import {v2 as cloudinary} from 'cloudinary';
-import { Console } from 'console';
+// import { Console } from 'console';
 import fs  from "fs"
 
 cloudinary.config({ 
@@ -17,11 +17,13 @@ const uploadOnCloudinary=async (localFilePath)=>{
         })
         //file has been uploaded successfully   
         console.log("file has been uploaded on cloudinary",response.url)
+        fs.unlinkSync(localFilePath)
+        // console.log("last line")
         return response;
     }catch(error){
         //removing the files locally after uploading using unlink (synchronously)???? not done here yet
 
-        
+        console.log("in cloud",error)
         fs.unlinkSync(localFilePath) //remove the locally saved temporary file as the upload operation failed
         return null;
     }
