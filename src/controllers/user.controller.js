@@ -8,6 +8,26 @@ import {uploadOnCloudinary} from '../utils/cloudinary.js'
 
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+
+const generateAccessAndRefreshTokens=async(userId)=>{
+    try{
+        const user=await User.findById(userId);
+        const accessToken=user.generateAccessToken();
+        const refreshToken=user.generateRefreshToken();
+
+        //document object ke andar ham refresh token daal rhe hai
+        //basically we are seeing the properties in usermodel we see refresh token and now user data base me daal denge
+
+       user.refreshToken=refreshToken; 
+       await user.save({validateBeforeSave:false});//save in db ..validate before save means baaki saare fields from usermodel jaise passwoed username watchHistory, you DONT save them 
+
+       return {accessToken,refreshToken}
+
+    }catch(error){
+        throw new ApiError(500,"somehing went wrong while generating referesh and access token")
+    }
+}
+
 const registerUser=asyncHandler(async(req,res)=>{
     // return res.status(200).json({
     //     message:"ok"
@@ -130,4 +150,94 @@ const registerUser=asyncHandler(async(req,res)=>{
     )
 })
 
-export {registerUser}
+const loginUser=asyncHandler(async(req,res)=>{
+    //todos??
+    //req.body bnao username /email dono eksath bhi chala skte
+    //find the user
+    //password check 
+    //access and refresh token generate and send to the user
+    //send secure cookies
+
+    const {email,username,password}=req.body
+    if(!(username  || email)){
+        throw new ApiError(400,"username or password is required")
+    }
+    const user =await user.findOne({
+        $or:[{username},{email}]
+    })
+
+    if(!user){
+        throw new ApiError(404,"user does not exist")
+    }
+
+    //User mongodb object
+    //user instance hai 
+    const isPasswordValid=await user.isPasswordCorrect(password);
+
+    if(!isPasswordValid){
+        throw new ApiError(404,"user doesnt exist")
+    }
+    
+
+    const {accessToken,refreshToken}=await generateAccessAndRefreshTokens(user._id);
+
+    //user ko konsi info bhejni---->cookies me bhejo --->eg password,refreshtoken mt bhejo
+
+
+    const loggedInUser=await User.findById(user._id).select("-password","-refreshToken");
+
+    const options={
+        httpOnly:true,
+        secure:true
+    }
+
+    return res.status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user:loggedInUser,accessToken,refreshToken
+            },
+            "user logged in successfully"
+
+        )
+    )
+
+
+    
+})
+const logoutUser=asyncHandler(async(req,res)=>{
+    //cookies clear 
+    //refresh token ko bhi change krna hoga in order to logout
+
+    // req.user._id
+
+   await User.findByIdAndUpdate(
+         req.user._id,   
+        {
+            $set:{
+                refreshToken:undefined
+            }
+        },
+        {
+            new:true //new updated value milegi, old matlab refresh token bhi aajayga jo hamara objective hai logout ke time hatana
+        }
+
+    )
+
+    const options={
+        httpOnly:true,
+        secure:true
+    }
+    return res.status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
+    .json(new ApiResponse(200,{},"User logged out successfully"))
+
+    
+})
+
+export {registerUser
+,loginUser,logoutUser}
